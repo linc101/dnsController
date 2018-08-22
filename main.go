@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -11,8 +12,14 @@ import (
 
 func main() {
 
+	config, err := ReadConfig("./config.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf(config.Etcd.Protocol)
+
 	cfg := client.Config{
-		Endpoints: []string{"http://10.10.102.50:2379"},
+		Endpoints: []string{config.GetEndpoint()},
 		Transport: client.DefaultTransport,
 		// set timeout per request to fail fast when the target endpoint is unavailable
 		HeaderTimeoutPerRequest: time.Second,
@@ -30,6 +37,9 @@ func main() {
 		resp, err := kapi.Get(context.Background(), path, nil)
 		if err != nil {
 			log.Println(err)
+			ctx.JSON(iris.Map{
+				"error": err,
+			})
 		} else {
 			ctx.JSON(iris.Map{
 				"nodes": resp.Node.Nodes,
@@ -38,7 +48,6 @@ func main() {
 		}
 
 	})
-
 	// listen and serve on http://0.0.0.0:8080.
-	app.Run(iris.Addr(":8080"))
+	app.Run(iris.Addr(":" + config.GetWebPort()))
 }
